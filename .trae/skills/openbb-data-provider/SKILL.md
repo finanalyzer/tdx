@@ -945,6 +945,7 @@ Ensure your provider's data models comply with OpenBB's standard models to enabl
 - [TdxQuant Official Documentation](https://help.tdx.com.cn/quant/docs/markdown/ctx.stock.md/)
 - [tqcenter.py](references/tqcenter.py) - Full API implementation
 - [tdxdata_test.py](references/tdxdata_test.py) - Usage examples
+- [openbb_akshare](references/openbb_akshare) - Example provider for AKShare
 
 ### Related Projects
 - [openbb-akshare](https://github.com/finanalyzer/openbb_akshare) - AKShare provider for comparison
