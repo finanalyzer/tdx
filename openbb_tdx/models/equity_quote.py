@@ -159,8 +159,8 @@ class TdxQuantEquityQuoteFetcher(
                 # Initialize TdxQuant API if not already initialized
                 try:
                     # Use current working directory as the initialization path
-                    init_path = os.getcwd()
-                    tq.initialize(init_path)
+                    #init_path = os.getcwd()
+                    tq.initialize(__file__)
                 except Exception as e:
                     logger.warning(f"TdxQuant initialization warning: {e}")
 
@@ -175,8 +175,15 @@ class TdxQuantEquityQuoteFetcher(
                     return {"symbol": symbol, "error": str(error_msg)}
                 
                 # Map TdxQuant API fields to OpenBB standard fields
+                # Get exchange name using helper function
+                try:
+                    from openbb_tdx.utils.helpers import get_exchange_name_from_symbol
+                    exchange_name = get_exchange_name_from_symbol(symbol)
+                except Exception:
+                    exchange_name = symbol.split('.')[-1] if '.' in symbol else "Unknown"
+                
                 data = {
-                    "code": symbol,
+                    "code": symbol_b,
                     "name": f"Stock {symbol}",  # TdxQuant doesn't provide name in snapshot
                     "price": float(market_snapshot.get('Now', 0)),
                     "open": float(market_snapshot.get('Open', 0)),
@@ -192,7 +199,7 @@ class TdxQuantEquityQuoteFetcher(
                     "bid_volume": int(float(market_snapshot.get('Buyv', ['0'])[0])) if market_snapshot.get('Buyv') else 0,
                     "ask": float(market_snapshot.get('Sellp', ['0'])[0]) if market_snapshot.get('Sellp') else 0,
                     "ask_volume": int(float(market_snapshot.get('Sellv', ['0'])[0])) if market_snapshot.get('Sellv') else 0,
-                    "exchange": symbol.split('.')[-1] if '.' in symbol else "Unknown",
+                    "exchange": exchange_name,
                     "market_center": "TdxQuant",
                     "last_volume": int(float(market_snapshot.get('NowVol', 0))),
                     "close": float(market_snapshot.get('Now', 0)),  # Use current price as close for real-time data

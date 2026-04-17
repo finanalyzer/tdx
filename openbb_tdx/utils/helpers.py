@@ -205,3 +205,24 @@ def tdx_download(
         cache.write_dataframe(data_df)
 
     return data_df
+
+
+def get_exchange_name_from_symbol(symbol: str) -> str:
+    """Get exchange name from stock symbol.
+    
+    Args:
+        symbol: Stock symbol (e.g., '000001.SZ', '600000.SH')
+    
+    Returns:
+        Exchange name in Chinese
+    
+    Example:
+        >>> get_exchange_name_from_symbol('000001.SZ')
+        '深圳交易所'
+        >>> get_exchange_name_from_symbol('600000.SH')
+        '上海交易所'
+    """
+    from openbb_tdx.utils.constants import get_exchange_name
+    
+    symbol_b, symbol_f, market = normalize_symbol(symbol)
+    return get_exchange_name(market)
