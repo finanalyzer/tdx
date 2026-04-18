@@ -1,6 +1,6 @@
 # 获取证券基本信息get_stock_info
 
-### [#](https://help.tdx.com.cn/quant/docs/markdown/mindoc-1ctuhthaq5qmg/mindoc-1h10jj7r7jol4.html#%E6%A0%B9%E6%8D%AE%E8%82%A1%E7%A5%A8-%E8%8E%B7%E5%8F%96%E8%82%A1%E7%A5%A8%E5%9F%BA%E7%A1%80%E7%9A%84%E8%B4%A2%E5%8A%A1%E6%95%B0%E6%8D%AE)根据股票，获取股票基础的财务数据
+### 根据股票，获取股票基础的财务数据
 
 ```
 get_stock_info(cls,
@@ -8,14 +8,14 @@ get_stock_info(cls,
                 field_list: List = []) -> Dict:
 ```
 
-### [#](https://help.tdx.com.cn/quant/docs/markdown/mindoc-1ctuhthaq5qmg/mindoc-1h10jj7r7jol4.html#%E8%BE%93%E5%85%A5%E5%8F%82%E6%95%B0)输入参数
+### 输入参数
 
 | 参数         | 是否必选 | 参数类型      | 参数说明      |
 | ---------- | ---- | --------- | --------- |
 | stock_code | Y    | str       | 证券代码      |
 | field_list | Y    | List[str] | 字段筛选，不能为空 |
 
-### [#](https://help.tdx.com.cn/quant/docs/markdown/mindoc-1ctuhthaq5qmg/mindoc-1h10jj7r7jol4.html#%E8%BF%94%E5%9B%9E%E6%95%B0%E6%8D%AE)返回数据
+### 返回数据
 
 | 数据              | 默认返回 | 数据类型      | 数据说明                                                                      |
 | --------------- | ---- | --------- | ------------------------------------------------------------------------- |
@@ -84,7 +84,7 @@ get_stock_info(cls,
 | underly_setcode | Y    | str       | 标的市场代码(比如：当前ETF跟踪的指数市场)                                                   |
 | underly_code    | Y    | str       | 标的代码(比如：当前ETF跟踪的指数代码)                                                     |
 
-### [#](https://help.tdx.com.cn/quant/docs/markdown/mindoc-1ctuhthaq5qmg/mindoc-1h10jj7r7jol4.html#%E6%8E%A5%E5%8F%A3%E4%BD%BF%E7%94%A8)接口使用
+### 接口使用
 
 ```
 from tqcenter import tq
@@ -93,7 +93,7 @@ fdc = tq.get_stock_info(stock_code='688318.SH', field_list=[])
 print(fdc)
 ```
 
-### [#](https://help.tdx.com.cn/quant/docs/markdown/mindoc-1ctuhthaq5qmg/mindoc-1h10jj7r7jol4.html#%E6%95%B0%E6%8D%AE%E6%A0%B7%E6%9C%AC)数据样本
+### 数据样本
 
 ```
 {'Name': '财富趋势', 
