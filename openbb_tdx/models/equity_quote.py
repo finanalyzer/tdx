@@ -22,6 +22,7 @@ from pydantic import Field
 import logging
 from mysharelib.tools import setup_logger, normalize_symbol
 from openbb_tdx import project_name
+from openbb_tdx.utils.tdx_equity_search import get_name
 
 setup_logger(project_name)
 logger = logging.getLogger(__name__)
@@ -184,7 +185,7 @@ class TdxQuantEquityQuoteFetcher(
                 
                 data = {
                     "code": symbol_b,
-                    "name": f"Stock {symbol}",  # TdxQuant doesn't provide name in snapshot
+                    "name": get_name(symbol) or f"Stock {symbol}",
                     "price": float(market_snapshot.get('Now', 0)),
                     "open": float(market_snapshot.get('Open', 0)),
                     "high": float(market_snapshot.get('Max', 0)),

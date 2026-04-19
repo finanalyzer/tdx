@@ -12,23 +12,11 @@ from openbb_core.provider.utils.descriptions import (
     QUERY_DESCRIPTIONS,
 )
 from pydantic import Field
-from mysharelib.table_cache import TableCache
 from mysharelib.tools import normalize_symbol
 import logging
 from openbb_tdx import project_name
 from openbb_tdx.utils.constants import MARKET_CATEGORY_MAP
-
-# Import tq module for mocking purposes
-try:
-    from tqcenter import tq
-except ImportError:
-    tq = None
-
-SYMBOLS_SCHEMA = {
-    "symbol": "TEXT PRIMARY KEY",
-    "name": "TEXT",
-    "exchange": "TEXT",
-}
+from openbb_tdx.utils.tdx_equity_search import get_symbols
 
 logger = logging.getLogger(__name__)
 
@@ -119,45 +107,24 @@ class TdxQuantEquitySearchFetcher(
         if query.market != "102":
             list_type = query.list_type
         
-        cache_table_name = "symbols"
-        cache = TableCache(SYMBOLS_SCHEMA, project=project_name, table_name=cache_table_name, primary_key="symbol")
+        df = get_symbols(
+            use_cache=query.use_cache,
+            market=query.market,
+            list_type=list_type,
+        )
         
-        if query.use_cache:
-            data_from_cache = cache.read_dataframe()
-            if not data_from_cache.empty:
-                logger.info(f"Loading symbols from {project_name} cache for market={query.market}, list_type={list_type}...")
-                result = []
-                for _, row in data_from_cache.iterrows():
-                    code = row.get('symbol', '')
-                    name = row.get('name', '')
-                    result.append({"Code": code, "Name": name})
-                if query.limit is not None and query.limit > 0:
-                    result = result[:query.limit]
-                return result
-
-        try:
-            if tq is None:
-                raise ImportError("tqcenter module not found")
-            
-            tq.initialize(__file__)
-            
-            data = tq.get_stock_list(market=query.market, list_type=list_type)
-            logger.info(f"Equity Search Raw data length from TdxQuant: {len(data)}")
-            
-            result = []
-            if list_type == 0:
-                for code in data:
-                    result.append({"Code": code, "Name": ""})
-            else:
-                result = data
-            
-            if query.limit is not None and query.limit > 0:
-                result = result[:query.limit]
-            
-            return result
-        except Exception as e:
-            logger.error(f"Error extracting data from TdxQuant: {str(e)}")
-            raise
+        if query.limit is not None and query.limit > 0:
+            df = df.head(query.limit)
+        
+        result = []
+        for _, row in df.iterrows():
+            result.append({
+                "Code": row.get("symbol", ""),
+                "Name": row.get("name", ""),
+                "Exchange": row.get("exchange", ""),
+            })
+        
+        return result
 
     @staticmethod
     def transform_data(
@@ -168,20 +135,10 @@ class TdxQuantEquitySearchFetcher(
         transformed_data = []
         
         for item in data:
-            # Extract symbol and name
             symbol = item.get('Code', '')
             name = item.get('Name', '')
+            exchange = item.get('Exchange', '')
             
-            # Extract exchange from symbol
-            exchange = None
-            if symbol.endswith('.SZ'):
-                exchange = 'SZ'
-            elif symbol.endswith('.SH'):
-                exchange = 'SH'
-            elif symbol.endswith('.HK'):
-                exchange = 'HK'
-            
-            # Create data object
             equity_data = TdxQuantEquitySearchData(
                 symbol=symbol,
                 name=name,

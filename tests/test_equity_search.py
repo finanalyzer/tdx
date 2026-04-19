@@ -2,29 +2,27 @@
 
 import pytest
 import asyncio
+import pandas as pd
 from unittest.mock import Mock, patch
 from openbb_tdx.models.equity_search import TdxQuantEquitySearchFetcher
 
 
 @pytest.fixture
-def mock_tq():
-    """Mock tq module for testing"""
-    with patch('openbb_tdx.models.equity_search.tq') as mock:
-        mock.initialize.return_value = None
+def mock_get_symbols():
+    """Mock get_symbols function for testing"""
+    with patch('openbb_tdx.models.equity_search.get_symbols') as mock:
         yield mock
 
 
 @pytest.mark.asyncio
-async def test_basic_search(mock_tq):
+async def test_basic_search(mock_get_symbols):
     """Test basic search functionality"""
-    # Mock response
-    mock_tq.get_stock_list.return_value = [
-        {'Code': '000001.SZ', 'Name': '平安银行'},
-        {'Code': '600036.SH', 'Name': '招商银行'},
-        {'Code': '601398.SH', 'Name': '工商银行'},
-    ]
+    mock_get_symbols.return_value = pd.DataFrame([
+        {'symbol': '000001.SZ', 'name': '平安银行', 'exchange': 'SZSE'},
+        {'symbol': '600036.SH', 'name': '招商银行', 'exchange': 'SSE'},
+        {'symbol': '601398.SH', 'name': '工商银行', 'exchange': 'SSE'},
+    ])
     
-    # Test search
     fetcher = TdxQuantEquitySearchFetcher()
     params = {'query': '银行', 'market': '5', 'list_type': 1, 'use_cache': False}
     query = fetcher.transform_query(params)
@@ -34,19 +32,17 @@ async def test_basic_search(mock_tq):
     assert len(results) == 3
     assert results[0].symbol == '000001.SZ'
     assert results[0].name == '平安银行'
-    assert results[0].exchange == 'SZ'
+    assert results[0].exchange == 'SZSE'
 
 
 @pytest.mark.asyncio
-async def test_empty_search(mock_tq):
+async def test_empty_search(mock_get_symbols):
     """Test empty search functionality"""
-    # Mock response
-    mock_tq.get_stock_list.return_value = [
-        {'Code': '000001.SZ', 'Name': '平安银行'},
-        {'Code': '000002.SZ', 'Name': '万科A'},
-    ]
+    mock_get_symbols.return_value = pd.DataFrame([
+        {'symbol': '000001.SZ', 'name': '平安银行', 'exchange': 'SZSE'},
+        {'symbol': '000002.SZ', 'name': '万科A', 'exchange': 'SZSE'},
+    ])
     
-    # Test search
     fetcher = TdxQuantEquitySearchFetcher()
     params = {'query': None, 'market': '5', 'list_type': 1, 'use_cache': False}
     query = fetcher.transform_query(params)
@@ -57,16 +53,14 @@ async def test_empty_search(mock_tq):
 
 
 @pytest.mark.asyncio
-async def test_limit_parameter(mock_tq):
+async def test_limit_parameter(mock_get_symbols):
     """Test limit parameter functionality"""
-    # Mock response
-    mock_tq.get_stock_list.return_value = [
-        {'Code': '000001.SZ', 'Name': '平安银行'},
-        {'Code': '000002.SZ', 'Name': '万科A'},
-        {'Code': '000004.SZ', 'Name': '*ST国华'},
-    ]
+    mock_get_symbols.return_value = pd.DataFrame([
+        {'symbol': '000001.SZ', 'name': '平安银行', 'exchange': 'SZSE'},
+        {'symbol': '000002.SZ', 'name': '万科A', 'exchange': 'SZSE'},
+        {'symbol': '000004.SZ', 'name': '*ST国华', 'exchange': 'SZSE'},
+    ])
     
-    # Test with limit=2
     fetcher = TdxQuantEquitySearchFetcher()
     params = {'query': None, 'market': '5', 'list_type': 1, 'limit': 2, 'use_cache': False}
     query = fetcher.transform_query(params)
@@ -77,17 +71,20 @@ async def test_limit_parameter(mock_tq):
 
 
 @pytest.mark.asyncio
-async def test_market_filtering(mock_tq):
+async def test_market_filtering(mock_get_symbols):
     """Test market filtering functionality"""
-    # Mock response for A-shares (market=5, list_type=1 returns dicts)
-    # Mock response for HK stocks (market=102, list_type=0 returns list of codes)
-    mock_tq.get_stock_list.side_effect = lambda market, list_type: [
-        {'Code': '000001.SZ', 'Name': '平安银行'}
-    ] if market == '5' else [
-        '00001.HK'
-    ]
+    def mock_symbols_side_effect(use_cache, market, list_type):
+        if market == '5':
+            return pd.DataFrame([
+                {'symbol': '000001.SZ', 'name': '平安银行', 'exchange': 'SZSE'}
+            ])
+        else:
+            return pd.DataFrame([
+                {'symbol': '00001.HK', 'name': '长和', 'exchange': 'HKEX'}
+            ])
     
-    # Test A-shares
+    mock_get_symbols.side_effect = mock_symbols_side_effect
+    
     fetcher = TdxQuantEquitySearchFetcher()
     params = {'query': None, 'market': '5', 'list_type': 1, 'use_cache': False}
     query = fetcher.transform_query(params)
@@ -96,9 +93,8 @@ async def test_market_filtering(mock_tq):
     
     assert len(results) == 1
     assert results[0].symbol == '000001.SZ'
-    assert results[0].exchange == 'SZ'
+    assert results[0].exchange == 'SZSE'
 
-    # Test Hong Kong (list_type is forced to 0, returns raw codes)
     params = {'query': None, 'market': '102', 'list_type': 1, 'use_cache': False}
     query = fetcher.transform_query(params)
     data = await fetcher.aextract_data(query, None)
@@ -106,14 +102,14 @@ async def test_market_filtering(mock_tq):
     
     assert len(results) == 1
     assert results[0].symbol == '00001.HK'
-    assert results[0].exchange == 'HK'
+    assert results[0].exchange == 'HKEX'
 
 
 @pytest.mark.asyncio
-async def test_error_handling(mock_tq):
+async def test_error_handling(mock_get_symbols):
     """Test error handling functionality"""
     # Mock exception
-    mock_tq.get_stock_list.side_effect = Exception("API Error")
+    mock_get_symbols.side_effect = Exception("API Error")
     
     # Test error handling
     fetcher = TdxQuantEquitySearchFetcher()
@@ -125,21 +121,18 @@ async def test_error_handling(mock_tq):
 
 
 @pytest.mark.asyncio
-async def test_symbol_formatting(mock_tq):
+async def test_symbol_formatting(mock_get_symbols):
     """Test symbol formatting functionality"""
-    # Mock response
-    mock_tq.get_stock_list.return_value = [
-        {'Code': '000001.SZ', 'Name': '平安银行'},
-    ]
+    mock_get_symbols.return_value = pd.DataFrame([
+        {'symbol': '000001.SZ', 'name': '平安银行', 'exchange': 'SZSE'},
+    ])
     
-    # Test with suffix
     fetcher = TdxQuantEquitySearchFetcher()
     params = {'query': '000001.SZ', 'market': '5', 'list_type': 1, 'use_cache': False}
     query = fetcher.transform_query(params)
     data = await fetcher.aextract_data(query, None)
     results_with_suffix = fetcher.transform_data(query, data)
     
-    # Test without suffix
     params = {'query': '000001', 'market': '5', 'list_type': 1, 'use_cache': False}
     query = fetcher.transform_query(params)
     data = await fetcher.aextract_data(query, None)
@@ -151,12 +144,13 @@ async def test_symbol_formatting(mock_tq):
 
 
 @pytest.mark.asyncio
-async def test_list_type_zero(mock_tq):
+async def test_list_type_zero(mock_get_symbols):
     """Test list_type=0 functionality"""
-    # Mock response with just codes
-    mock_tq.get_stock_list.return_value = ['000001.SZ', '000002.SZ']
+    mock_get_symbols.return_value = pd.DataFrame([
+        {'symbol': '000001.SZ', 'name': '', 'exchange': 'SZSE'},
+        {'symbol': '000002.SZ', 'name': '', 'exchange': 'SZSE'},
+    ])
     
-    # Test with list_type=0
     fetcher = TdxQuantEquitySearchFetcher()
     params = {'query': None, 'market': '5', 'list_type': 0, 'use_cache': False}
     query = fetcher.transform_query(params)
