@@ -188,6 +188,62 @@ MARKET_CODE_NAME_MAP = {
     "QHZ": "期货类指数",
 }
 
+# Constants dictionary for the market parameter in get_stock_list
+MARKET_CATEGORY_MAP = {
+    # Basic categories
+    "SELF_SELECTED": "0",         # 自选股
+    "HELD_STOCKS": "1",           # 持仓股
+    "ALL_A_SHARES": "5",          # 所有A股
+    "SSE_INDEX_COMPONENTS": "6",   # 上证指数成份股
+    "SSE_MAIN_BOARD": "7",        # 上证主板
+    "SZSE_MAIN_BOARD": "8",       # 深证主板
+    "KEY_INDEXES": "9",            # 重点指数
+    
+    # Sector and industry categories
+    "ALL_SECTOR_INDEXES": "10",                # 所有板块指数
+    "DEFAULT_INDUSTRY_SECTORS": "11",          # 缺省行业板块
+    "CONCEPT_SECTORS": "12",                   # 概念板块
+    "STYLE_SECTORS": "13",                     # 风格板块
+    "REGIONAL_SECTORS": "14",                  # 地区板块
+    "DEFAULT_INDUSTRY_AND_CONCEPT": "15",      # 缺省行业分类+概念板块
+    "RESEARCH_INDUSTRY_LEVEL_1": "16",         # 研究行业一级
+    "RESEARCH_INDUSTRY_LEVEL_2": "17",         # 研究行业二级
+    "RESEARCH_INDUSTRY_LEVEL_3": "18",         # 研究行业三级
+    
+    # Special categories
+    "WITH_H_SHARES": "21",         # 含H股
+    "WITH_CONVERTIBLE_BONDS": "22", # 含可转债
+    "CSI_300": "23",                # 沪深300
+    "CSI_500": "24",                # 中证500
+    "CSI_1000": "25",               # 中证1000
+    "SZSE_2000": "26",              # 国证2000
+    "CSI_2000": "27",               # 中证2000
+    "CSI_A500": "28",               # 中证A500
+    
+    # Fund categories
+    "REITS": "30",                  # REITs
+    "ETF_FUNDS": "31",              # ETF基金
+    "CONVERTIBLE_BONDS": "32",       # 可转债
+    "LOF_FUNDS": "33",               # LOF基金
+    "ALL_TRADABLE_FUNDS": "34",      # 所有可交易基金
+    "ALL_SSE_SZSE_FUNDS": "35",      # 所有沪深基金
+    "T0_FUNDS": "36",                # T+0基金
+    
+    # Enterprise categories
+    "FINANCIAL_ENTERPRISES": "49",   # 金融类企业
+    "SSE_SZSE_A_SHARES": "50",       # 沪深A股
+    "GEM_BOARD": "51",               # 创业板
+    "SCIENCE_TECH_INNO_BOARD": "52", # 科创板
+    "BEIJING_STOCK_EXCHANGE": "53",  # 北交所
+    
+    # International markets
+    "DOMESTIC_FUTURES": "101",       # 国内期货
+    "HONG_KONG_STOCKS": "102",       # 港股
+    "US_STOCKS": "103",              # 美股
+    
+    # Special index
+    "ETF_TRACKED_INDEXES": "91"      # ETF追踪的指数
+}
 
 def get_market_from_suffix(suffix: str) -> Market:
     """Get market type from suffix.

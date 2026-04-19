@@ -12,15 +12,23 @@ from openbb_core.provider.utils.descriptions import (
     QUERY_DESCRIPTIONS,
 )
 from pydantic import Field
-
+from mysharelib.table_cache import TableCache
+from mysharelib.tools import normalize_symbol
 import logging
 from openbb_tdx import project_name
+from openbb_tdx.utils.constants import MARKET_CATEGORY_MAP
 
 # Import tq module for mocking purposes
 try:
     from tqcenter import tq
 except ImportError:
     tq = None
+
+SYMBOLS_SCHEMA = {
+    "symbol": "TEXT PRIMARY KEY",
+    "name": "TEXT",
+    "exchange": "TEXT",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +42,16 @@ class TdxQuantEquitySearchQueryParams(EquitySearchQueryParams):
         description=QUERY_DESCRIPTIONS.get("query", ""),
     )
     market: str = Field(
-        default="5",
+        default=MARKET_CATEGORY_MAP["ALL_A_SHARES"],
         description="Market type. Default: '5' (all A-shares)",
     )
     list_type: int = Field(
         default=1,
         description="Return format. 0: only codes, 1: codes and names",
+    )
+    use_cache: bool = Field(
+        default=True,
+        description="Whether to use a cached request.",
     )
     limit: Optional[int] = Field(
         default=10000,
@@ -60,8 +72,39 @@ class TdxQuantEquitySearchFetcher(
     """Transform the query, extract and transform the data from the TdxQuant endpoints."""
 
     @staticmethod
+    def _is_valid_symbol(query_str: str) -> bool:
+        """Check if the query string is a valid symbol format.
+        
+        Valid formats:
+        - 5 or 6 digit numeric string (e.g., "000001", "00300")
+        - Symbol with market suffix (e.g., "600000.SH", "00700.HK")
+        """
+        if not query_str:
+            return False
+        
+        suffixes = [".SS", ".SH", ".HK", ".BJ", ".SZ"]
+        for suffix in suffixes:
+            if query_str.endswith(suffix):
+                base = query_str[:-len(suffix)]
+                return base.isdigit() and len(base) in [5, 6]
+        
+        return query_str.isdigit() and len(query_str) in [5, 6]
+
+    @staticmethod
     def transform_query(params: Dict[str, Any]) -> TdxQuantEquitySearchQueryParams:
         """Transform the query."""
+        query = params.get("query")
+        explicit_market = params.get("market")
+        if query and TdxQuantEquitySearchFetcher._is_valid_symbol(query) and not explicit_market:
+            try:
+                _, _, market = normalize_symbol(query)
+                if market in ["SH", "SZ", "BJ"]:
+                    params["market"] = MARKET_CATEGORY_MAP["ALL_A_SHARES"]
+                elif market == "HK":
+                    params["market"] = MARKET_CATEGORY_MAP["HONG_KONG_STOCKS"]
+            except Exception as e:
+                logger.warning(f"Failed to normalize symbol '{query}': {e}")
+        
         return TdxQuantEquitySearchQueryParams(**params)
 
     @staticmethod
@@ -72,29 +115,42 @@ class TdxQuantEquitySearchFetcher(
     ) -> List[Dict]:
         """Return the raw data from the TdxQuant endpoint."""
 
+        list_type = 0
+        if query.market != "102":
+            list_type = query.list_type
+        
+        cache_table_name = "symbols"
+        cache = TableCache(SYMBOLS_SCHEMA, project=project_name, table_name=cache_table_name, primary_key="symbol")
+        
+        if query.use_cache:
+            data_from_cache = cache.read_dataframe()
+            if not data_from_cache.empty:
+                logger.info(f"Loading symbols from {project_name} cache for market={query.market}, list_type={list_type}...")
+                result = []
+                for _, row in data_from_cache.iterrows():
+                    code = row.get('symbol', '')
+                    name = row.get('name', '')
+                    result.append({"Code": code, "Name": name})
+                if query.limit is not None and query.limit > 0:
+                    result = result[:query.limit]
+                return result
+
         try:
             if tq is None:
                 raise ImportError("tqcenter module not found")
             
             tq.initialize(__file__)
             
-            list_type = 0
-            if query.market != "102":
-                list_type = query.list_type
             data = tq.get_stock_list(market=query.market, list_type=list_type)
             logger.info(f"Equity Search Raw data length from TdxQuant: {len(data)}")
             
-            # Handle different return formats
             result = []
             if list_type == 0:
-                # Return only codes
                 for code in data:
                     result.append({"Code": code, "Name": ""})
             else:
-                # Return codes and names
-                return data
+                result = data
             
-            # Apply limit if specified
             if query.limit is not None and query.limit > 0:
                 result = result[:query.limit]
             
