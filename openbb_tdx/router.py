@@ -54,3 +54,58 @@ async def cash_flow(
 ) -> OBBject[BaseModel]:
     """Get TdxQuant cash flow statement data."""
     return await OBBject.from_query(Query(**locals()))
+
+
+@router.command(model="TdxQuantEquityQuote")
+async def equity_quote(
+    cc: CommandContext,
+    provider_choices: ProviderChoices,
+    standard_params: StandardParams,
+    extra_params: ExtraParams,
+) -> OBBject[BaseModel]:
+    """Get TdxQuant equity quote data."""
+    return await OBBject.from_query(Query(**locals()))
+
+
+@router.command(model="TdxQuantEquityDividends")
+async def equity_dividends(
+    cc: CommandContext,
+    provider_choices: ProviderChoices,
+    standard_params: StandardParams,
+    extra_params: ExtraParams,
+) -> OBBject[BaseModel]:
+    """Get TdxQuant equity dividends data."""
+    return await OBBject.from_query(Query(**locals()))
+
+
+@router.command(model="TdxQuantEquityProfile")
+async def equity_profile(
+    cc: CommandContext,
+    provider_choices: ProviderChoices,
+    standard_params: StandardParams,
+    extra_params: ExtraParams,
+) -> OBBject[BaseModel]:
+    """Get TdxQuant equity profile data."""
+    return await OBBject.from_query(Query(**locals()))
+
+
+@router.command(model="TdxQuantEquitySearch")
+async def equity_search(
+    cc: CommandContext,
+    provider_choices: ProviderChoices,
+    standard_params: StandardParams,
+    extra_params: ExtraParams,
+) -> OBBject[BaseModel]:
+    """Get TdxQuant equity search data."""
+    return await OBBject.from_query(Query(**locals()))
+
+
+@router.command(model="TdxQuantKeyMetrics")
+async def key_metrics(
+    cc: CommandContext,
+    provider_choices: ProviderChoices,
+    standard_params: StandardParams,
+    extra_params: ExtraParams,
+) -> OBBject[BaseModel]:
+    """Get TdxQuant key metrics data."""
+    return await OBBject.from_query(Query(**locals()))
