@@ -51,7 +51,7 @@ The emergence of TdxQuant provides a new, high-quality data channel for OpenBB t
 
 ---
 
-## 2. Development Motivation Analysis
+## 2. Development Motivation
 
 ### 2.1 Filling the Gap in OpenBB's Chinese Market Data Ecosystem
 
