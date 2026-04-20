@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openbb-tdx"
-version = "0.1.33"
+version = "1.0.0"
 description = "TdxQuant data provider extension for OpenBB Platform"
 authors = ["Super Quant <super.quant@example.com>"]
 readme = "README.md"
