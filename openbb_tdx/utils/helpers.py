@@ -94,6 +94,8 @@ def tdx_download_without_cache(
         data_dict = tq.get_market_data(
             field_list=[],
             stock_list=[stock_code],
+            start_time=start_date,
+            end_time=end_date,
             period=tdx_period,
             count=count,
             dividend_type='none',
