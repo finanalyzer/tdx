@@ -39,6 +39,11 @@ class TdxQuantEquityHistoricalQueryParams(EquityHistoricalQueryParams):
         description="Whether to use a cached request. The quote is cached for one hour.",
     )
 
+    adjustment: Optional[Literal["qfq", "hfq"]] = Field(
+        default=None,
+        description="Adjustment type for historical prices. 'qfq' for forward-adjusted (前复权), 'hfq' for backward-adjusted (后复权). None means no adjustment.",
+    )
+
 
 class TdxQuantEquityHistoricalData(EquityHistoricalData):
     """TdxQuant Equity Historical Price Data."""
@@ -105,6 +110,7 @@ class TdxQuantEquityHistoricalFetcher(
             end_date=query.end_date,
             period=query.period,
             use_cache=query.use_cache,
+            adjustment=query.adjustment,
         )
 
         if data.empty:
