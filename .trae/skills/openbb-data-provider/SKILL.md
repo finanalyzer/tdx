@@ -295,6 +295,158 @@ def _fetch_financial_statement_data(
 
 ---
 
+# Stock Price Adjustment (Dividend/Split Handling)
+
+## 1. Stock Price Adjustment Overview
+
+### 1.1 Why Adjust Stock Prices?
+
+Stocks experience events such as rights issues, splits, consolidations, and dividend distributions that create significant gaps in price data. Using unadjusted prices for data processing and indicator calculations results in discontinuities and incorrect return calculations. To ensure data continuity, price series are typically adjusted using forward adjustment (前复权) or backward adjustment (后复权).
+
+### 1.2 Forward Adjustment (前复权)
+
+Keeps current prices unchanged while adjusting historical prices up or down to maintain continuity. Forward adjustment is very convenient for chart analysis, allowing clear visualization of historical price trends and smooth overlay of technical indicators. It is the default adjustment method in most market data software.
+
+**Important Notes:**
+
+- Historical prices are time-varying and must be readjusted each time a stock goes ex-dividend or ex-rights, potentially resulting in different historical forward-adjusted prices seen at different times.
+- For companies with consistent dividend payouts, forward-adjusted prices may become negative.
+
+### 1.3 Backward Adjustment (后复权)
+
+Keeps historical prices unchanged while adjusting current stock prices after each equity event. Backward-adjusted prices may differ significantly from actual stock prices and are not suitable for chart analysis.
+
+**Advantages:**
+
+- Can be viewed as a long-term wealth growth curve for investors
+- Reflects investors' true return situations
+- Commonly used in quantitative investment research
+
+---
+
+## 2. OpenBB Adjustment Implementation
+
+OpenBB supports retrieving adjusted data through the `adjustment` parameter in the `obb.equity.price.historical` command.
+
+### 2.1 Supported Adjustment Types
+
+| Adjustment Type        | Description                                                |
+| ---------------------- | ---------------------------------------------------------- |
+| `splits_only`          | Default - adjusts only for stock splits, not for dividends |
+| `splits_and_dividends` | Adjusts for both splits and dividends                      |
+| `unadjusted`           | Completely unadjusted raw data                             |
+
+### 2.2 Usage Examples
+
+```python
+from openbb import obb
+
+# Default method (不复权)
+data = obb.equity.price.historical("600325", provider="akshare")
+
+# 前复权
+data = obb.equity.price.historical("600325", adjustment="qfq", provider="akshare")
+
+# 后复权
+data = obb.equity.price.historical("600325", adjustment="hfq", provider="akshare")
+
+# Unadjusted raw data
+data = obb.equity.price.historical("600325", adjustment="", provider="akshare")
+```
+
+### 2.3 Important Notes
+
+- The `adjustment` parameter currently primarily supports `polygon` and `yfinance` providers
+- `splits_only`, `splits_and_dividends` and `unadjusted` modes are supported by `polygon` and `yfinance` providers
+- `openbb_akshare`, `openbb_tushare` and `openbb_tdx` uses `qfq` (前复权) and `hfq` (后复权) respectively
+
+---
+
+## 3. Chinese vs OpenBB Adjustment Concepts
+
+OpenBB's adjustment concepts are not exactly the same as Chinese forward/backward adjustments. The implementation logic and applicable scenarios differ between the two approaches.
+
+### 3.1 Chinese Adjustment Concepts
+
+**Forward Adjustment (前复权)**
+
+- Adjusts all historical prices upon each dividend or stock distribution
+- Latest price remains unchanged, historical prices are adjusted downward
+- Disadvantage: All historical prices change with each new dividend, requiring recalculation of indicators like moving averages
+
+**Backward Adjustment (后复权)**
+
+- Adjusts current and future prices upon each dividend or stock distribution
+- Historical prices remain unchanged, latest price is adjusted upward
+- Advantage: Historical prices are stable, suitable for backtesting
+
+### 3.2 OpenBB's Adjustment Methods
+
+Based on GitHub issue [#6917](https://github.com/OpenBB-finance/OpenBB/issues/6917) discussion:
+
+**`splits_only` (Default)**
+
+- Similar to backward adjustment: adjusts only for splits, not for dividends
+- Historical prices remain stable
+- Suitable for backtesting scenarios
+
+**`splits_and_dividends`**
+
+- Adjusts for both splits and dividends
+- OpenBB team notes that prices adjusted this way "never actually happened" and may not be suitable for precise price analysis
+- Often used to calculate total returns, but not the correct method
+
+**`unadjusted`**
+
+- Completely unadjusted raw data
+
+### 3.3 Key Comparison
+
+| Feature                    | Chinese Backward Adjustment | OpenBB `splits_only`                   |
+| -------------------------- | --------------------------- | -------------------------------------- |
+| Adjustment Target          | Splits + Dividends          | Splits only                            |
+| Historical Price Stability | Stable                      | Stable                                 |
+| Suitable Scenarios         | Backtesting                 | Backtesting (without dividend effects) |
+
+### 3.4 Practical Recommendations
+
+If you need **total return data including dividend effects**, OpenBB recommends:
+
+1. Use `splits_only` to get price data
+2. Retrieve dividend data separately
+3. Build total return metrics yourself
+
+Example:
+
+```python
+from openbb import obb
+
+# Get split-adjusted prices (stable historical prices)
+price_data = obb.equity.price.historical("AAPL", adjustment="splits_only", provider="yfinance")
+
+# If total returns are needed, you must calculate them yourself
+# because dividend handling varies significantly across data sources
+```
+
+---
+
+## 4. Chinese Data Provider Adjustment Implementations
+
+Most Chinese data providers support price adjustment. Here are the adjustment parameters for various platforms:
+
+| Data Provider | A-share Interface | Hong Kong Interface | Adjustment Parameters                                     |
+| akshare       | stock_zh_a_hist   | stock_hk_hist       | "" (unadjusted), "qfq" (forward), "hfq" (backward)        |
+| tushare       | pro_bar           | hk_daily_adj        | None (unadjusted), "qfq" (forward), "hfq" (backward)      |
+| tdxquant      | get_market_data   | get_market_data     | "none" (unadjusted), "front" (forward), "back" (backward) |
+
+For detailed documentation including input/output parameters, adjustment options, and usage examples:
+
+- **AKShare**: See [AKShare stock.md](references/akshare/stock.md) for `stock_zh_a_hist` and `stock_hk_hist`
+- **Tushare**: See [Tushare equity_cn.md](references/tushare/equity_cn.md) for `pro_bar` (A-share) and [Tushare equity_hk.md](references/tushare/equity_hk.md) for `hk_daily_adj` (Hong Kong stock)
+- **TdxQuant**: See [TdxQuant equity.md](references/tdxquant/get_market_data.md) for `get_market_data` (A-share and Hong Kong stock)
+
+---
+
 # TdxQuant Data Provider Implementation Guide
 
 ## Overview

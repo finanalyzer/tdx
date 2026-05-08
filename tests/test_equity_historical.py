@@ -1,8 +1,12 @@
 """Test TdxQuant equity historical price data module."""
 
 import pytest
-from openbb_tdx.models.equity_historical import TdxQuantEquityHistoricalFetcher
-from openbb_tdx.utils.helpers import tdx_download
+from unittest.mock import patch, MagicMock
+from openbb_tdx.models.equity_historical import (
+    TdxQuantEquityHistoricalFetcher,
+    TdxQuantEquityHistoricalQueryParams,
+)
+from openbb_tdx.utils.helpers import tdx_download, tdx_download_without_cache
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -128,3 +132,145 @@ def test_transform_data():
         assert transformed_data[0].low == 9.0
         assert transformed_data[0].close == 10.5
         assert transformed_data[0].volume == 1000000
+
+
+def test_adjustment_parameter_in_query_params():
+    """Test that adjustment parameter is correctly defined in query params."""
+    params = TdxQuantEquityHistoricalQueryParams(
+        symbol="600000",
+        start_date=datetime.now().date() - timedelta(days=30),
+        end_date=datetime.now().date(),
+        adjustment="qfq"
+    )
+    
+    assert hasattr(params, "adjustment")
+    assert params.adjustment == "qfq"
+    
+    # Test with hfq
+    params_hfq = TdxQuantEquityHistoricalQueryParams(
+        symbol="600000",
+        start_date=datetime.now().date() - timedelta(days=30),
+        end_date=datetime.now().date(),
+        adjustment="hfq"
+    )
+    assert params_hfq.adjustment == "hfq"
+    
+    # Test with default None
+    params_default = TdxQuantEquityHistoricalQueryParams(
+        symbol="600000",
+        start_date=datetime.now().date() - timedelta(days=30),
+        end_date=datetime.now().date()
+    )
+    assert params_default.adjustment is None
+
+
+def test_adjustment_to_dividend_type_mapping():
+    """Test the mapping from adjustment to dividend_type."""
+    from openbb_tdx.utils.helpers import tdx_download_without_cache
+    
+    # Test None -> 'none'
+    with patch('tqcenter.tq') as mock_tq:
+        mock_tq.initialize = MagicMock()
+        mock_tq.get_market_data = MagicMock(return_value={})
+        mock_tq.close = MagicMock()
+        
+        tdx_download_without_cache(
+            symbol="600000",
+            start_date="20240101",
+            end_date="20240131",
+            adjustment=None
+        )
+        
+        mock_tq.get_market_data.assert_called_once()
+        call_kwargs = mock_tq.get_market_data.call_args[1]
+        assert call_kwargs['dividend_type'] == 'none'
+    
+    # Test 'qfq' -> 'front'
+    with patch('tqcenter.tq') as mock_tq:
+        mock_tq.initialize = MagicMock()
+        mock_tq.get_market_data = MagicMock(return_value={})
+        mock_tq.close = MagicMock()
+        
+        tdx_download_without_cache(
+            symbol="600000",
+            start_date="20240101",
+            end_date="20240131",
+            adjustment="qfq"
+        )
+        
+        mock_tq.get_market_data.assert_called_once()
+        call_kwargs = mock_tq.get_market_data.call_args[1]
+        assert call_kwargs['dividend_type'] == 'front'
+    
+    # Test 'hfq' -> 'back'
+    with patch('tqcenter.tq') as mock_tq:
+        mock_tq.initialize = MagicMock()
+        mock_tq.get_market_data = MagicMock(return_value={})
+        mock_tq.close = MagicMock()
+        
+        tdx_download_without_cache(
+            symbol="600000",
+            start_date="20240101",
+            end_date="20240131",
+            adjustment="hfq"
+        )
+        
+        mock_tq.get_market_data.assert_called_once()
+        call_kwargs = mock_tq.get_market_data.call_args[1]
+        assert call_kwargs['dividend_type'] == 'back'
+
+
+def test_tdx_download_with_adjustment():
+    """Test tdx_download function with adjustment parameter."""
+    with patch('openbb_tdx.utils.helpers.tdx_download_without_cache') as mock_download:
+        mock_download.return_value = pd.DataFrame({
+            'date': ['2024-01-01'],
+            'open': [10.0],
+            'high': [11.0],
+            'low': [9.0],
+            'close': [10.5],
+            'volume': [1000000]
+        })
+        
+        data = tdx_download(
+            symbol="600000",
+            start_date=datetime.now().date() - timedelta(days=30),
+            end_date=datetime.now().date(),
+            adjustment="qfq",
+            use_cache=False
+        )
+        
+        mock_download.assert_called_once()
+        call_kwargs = mock_download.call_args[1]
+        assert call_kwargs.get('adjustment') == "qfq"
+        assert isinstance(data, pd.DataFrame)
+
+
+def test_extract_data_with_adjustment():
+    """Test extract_data method with adjustment parameter."""
+    with patch('openbb_tdx.utils.helpers.tdx_download') as mock_download:
+        mock_download.return_value = pd.DataFrame({
+            'date': ['2024-01-01'],
+            'open': [10.0],
+            'high': [11.0],
+            'low': [9.0],
+            'close': [10.5],
+            'volume': [1000000]
+        })
+        
+        query = TdxQuantEquityHistoricalQueryParams(
+            symbol="600000",
+            start_date=datetime.now().date() - timedelta(days=30),
+            end_date=datetime.now().date(),
+            period="daily",
+            use_cache=True,
+            adjustment="hfq"
+        )
+        
+        data = TdxQuantEquityHistoricalFetcher.extract_data(query, None)
+        
+        mock_download.assert_called_once()
+        call_kwargs = mock_download.call_args[1]
+        assert call_kwargs.get('adjustment') == "hfq"
+        assert isinstance(data, list)
+        assert len(data) == 1

@@ -40,7 +40,8 @@ def tdx_download_without_cache(
         start_date: str,
         end_date: str,
         period: Optional[str] = "daily",
-        use_cache: Optional[bool] = True, 
+        use_cache: Optional[bool] = True,
+        adjustment: Optional[str] = None,
     ) -> DataFrame:
     """
     Downloads historical equity data without using cache.
@@ -53,6 +54,9 @@ def tdx_download_without_cache(
         Data frequency, e.g., "daily", "weekly", "monthly".
     use_cache: bool
         Whether to use cache for fetching data.
+    adjustment: Optional[str]
+        Adjustment type for historical prices. 'qfq' for forward-adjusted (前复权),
+        'hfq' for backward-adjusted (后复权). None means no adjustment.
     """
 
     if not symbol:
@@ -71,6 +75,14 @@ def tdx_download_without_cache(
             "monthly": "1m"
         }
         tdx_period = period_map.get(period, "1d")
+        
+        # Map adjustment to dividend_type
+        adjustment_map = {
+            None: "none",
+            "qfq": "front",
+            "hfq": "back"
+        }
+        dividend_type = adjustment_map.get(adjustment, "none")
         
         # Format stock code for TdxQuant
         stock_code = f"{symbol_b}.{market}"
@@ -98,7 +110,7 @@ def tdx_download_without_cache(
             end_time=end_date,
             period=tdx_period,
             count=count,
-            dividend_type='none',
+            dividend_type=dividend_type,
             fill_data=False
         )
         
@@ -175,6 +187,7 @@ def tdx_download(
         period: Optional[str] = "daily",
         use_cache: Optional[bool] = True,
         api_key: Optional[str] = "",
+        adjustment: Optional[str] = None,
     ) -> DataFrame:
     from mysharelib.tools import get_valid_date
     if start_date is None:
@@ -187,8 +200,12 @@ def tdx_download(
     # Retrieve data from cache first
     symbol_b, symbol_f, market = normalize_symbol(symbol)
     
+    # Include adjustment type in cache table name to differentiate cached data
+    adjustment_suffix = f"_{adjustment}" if adjustment else ""
+    cache_table_name = f"{market}{symbol_b}{adjustment_suffix}"
+    
     if use_cache:
-        cache = TableCache(EQUITY_HISTORY_SCHEMA, project=project_name, table_name=f"{market}{symbol_b}", primary_key="date")
+        cache = TableCache(EQUITY_HISTORY_SCHEMA, project=project_name, table_name=cache_table_name, primary_key="date")
         check_cache(symbol=symbol_b, cache=cache, api_key=api_key, period=period)
         data_from_cache = cache.fetch_date_range(start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d"))
         if not data_from_cache.empty:
@@ -201,7 +218,8 @@ def tdx_download(
         symbol=symbol, 
         period=period, 
         start_date=start_dt.strftime("%Y%m%d"),
-        end_date=end_dt.strftime("%Y%m%d")
+        end_date=end_dt.strftime("%Y%m%d"),
+        adjustment=adjustment
     )
     
     if use_cache:
