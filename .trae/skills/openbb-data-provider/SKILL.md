@@ -341,24 +341,24 @@ OpenBB supports retrieving adjusted data through the `adjustment` parameter in t
 ```python
 from openbb import obb
 
-# Default method (split adjustment only)
-data = obb.equity.price.historical("AAPL", provider="yfinance")
+# Default method (不复权)
+data = obb.equity.price.historical("600325", provider="akshare")
 
-# Explicitly specify split adjustment only
-data = obb.equity.price.historical("AAPL", adjustment="splits_only", provider="yfinance")
+# 前复权
+data = obb.equity.price.historical("600325", adjustment="qfq", provider="akshare")
 
-# Adjust for both splits and dividends
-data = obb.equity.price.historical("AAPL", adjustment="splits_and_dividends", provider="yfinance")
+# 后复权
+data = obb.equity.price.historical("600325", adjustment="hfq", provider="akshare")
 
 # Unadjusted raw data
-data = obb.equity.price.historical("AAPL", adjustment="unadjusted", provider="yfinance")
+data = obb.equity.price.historical("600325", adjustment="", provider="akshare")
 ```
 
 ### 2.3 Important Notes
 
 - The `adjustment` parameter currently primarily supports `polygon` and `yfinance` providers
-- When not specified, `splits_only` is used by default, which does not adjust historical prices for dividends and is suitable for most backtesting scenarios
-- The `splits_and_dividends` mode adjusts for both splits and dividends, but this may cause historical prices to change each time a dividend is paid
+- `splits_only`, `splits_and_dividends` and `unadjusted` modes are supported by `polygon` and `yfinance` providers
+- `openbb_akshare`, `openbb_tushare` and `openbb_tdx` uses `qfq` (前复权) and `hfq` (后复权) respectively
 
 ---
 
